@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user preferences and profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Firebase Auth." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "User's role in the application." },
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "dietaryRestrictions": { "type": "array", "items": { "type": "string" } },
+            "caloriesGoal": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "A recipe created by a user or admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "ingredients": { "type": "array", "items": { "type": "string" } },
+        "instructions": { "type": "array", "items": { "type": "string" } },
+        "nutritionalValue": {
+          "type": "object",
+          "properties": {
+            "calories": { "type": "number" },
+            "protein": { "type": "number" },
+            "carbs": { "type": "number" },
+            "fat": { "type": "number" }
+          }
+        },
+        "category": { "type": "string", "enum": ["Breakfast", "Lunch", "Dinner", "Snack"] },
+        "authorId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "ingredients", "instructions", "authorId"]
+    },
+    "MealPlan": {
+      "title": "Weekly Meal Plan",
+      "description": "A user's meal plan for a specific week.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "weekStartDate": { "type": "string", "format": "date" },
+        "days": {
+          "type": "object",
+          "properties": {
+            "monday": { "$ref": "DailyMeals" },
+            "tuesday": { "$ref": "DailyMeals" },
+            "wednesday": { "$ref": "DailyMeals" },
+            "thursday": { "$ref": "DailyMeals" },
+            "friday": { "$ref": "DailyMeals" },
+            "saturday": { "$ref": "DailyMeals" },
+            "sunday": { "$ref": "DailyMeals" }
+          }
+        }
+      },
+      "required": ["userId", "weekStartDate"]
+    },
+    "DailyMeals": {
+      "title": "Daily Meals",
+      "type": "object",
+      "properties": {
+        "breakfast": { "type": "string", "description": "Recipe ID" },
+        "lunch": { "type": "string", "description": "Recipe ID" },
+        "dinner": { "type": "string", "description": "Recipe ID" },
+        "snacks": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/recipes/{recipeId}": { "schema": "Recipe", "description": "Recipe collection" },
+    "/mealPlans/{planId}": { "schema": "MealPlan", "description": "User meal plans" }
+  }
+}

@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string
+    //   - email: string (required, format: email)
+    //   - role: string (required, enum: ["user", "admin"])
+    //   - preferences: map (dietaryRestrictions: list, caloriesGoal: number)
+    //   - createdAt: string (format: date-time)
+    //
+    // Collection: recipes
+    // Document ID: recipeId
+    // Fields:
+    //   - title: string (required)
+    //   - description: string
+    //   - ingredients: list (required)
+    //   - instructions: list (required)
+    //   - nutritionalValue: map (calories: number, protein: number, carbs: number, fat: number)
+    //   - category: string (enum: ["Breakfast", "Lunch", "Dinner", "Snack"])
+    //   - authorId: string (required)
+    //   - isPublic: bool
+    //   - createdAt: string (format: date-time)
+    //
+    // Collection: mealPlans
+    // Document ID: planId
+    // Fields:
+    //   - userId: string (required)
+    //   - weekStartDate: string (required, format: date)
+    //   - days: map (monday, tuesday, wednesday, thursday, friday, saturday, sunday: map)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "jflorperitociberseguridad@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             isValidEmail(data.email) &&
+             data.role in ['user', 'admin'];
+    }
+
+    function isValidRecipe(data) {
+      return data.keys().hasAll(['title', 'ingredients', 'instructions', 'authorId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.ingredients is list && data.ingredients.size() > 0 &&
+             data.instructions is list && data.instructions.size() > 0 &&
+             data.authorId is string;
+    }
+
+    function isValidMealPlan(data) {
+      return data.keys().hasAll(['userId', 'weekStartDate']) &&
+             data.userId is string &&
+             data.weekStartDate is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if isAuthenticated() && (resource.data.isPublic == true || resource.data.authorId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidRecipe(request.resource.data) && (request.resource.data.authorId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin()) && isValidRecipe(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /mealPlans/{planId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidMealPlan(request.resource.data) && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidMealPlan(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+  }
+}

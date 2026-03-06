@@ -1,0 +1,5 @@
+{
+  "name": "NutriPlan AI",
+  "description": "A smart meal planning application with recipe management, weekly menus, and AI-powered nutritional suggestions.",
+  "requestFramePermissions": []
+}
